@@ -12,6 +12,8 @@ COPY --from=builder /app/autorestic /usr/bin/autorestic
 
 ENV CRON_SCHEDULE="10 2 * * *"
 ENV AUTORESTIC_CONFIG="/data/.autorestic.yml"
+WORKDIR /data
+VOLUME [ "/data" ]
 
 RUN echo '#!/bin/sh' > /entrypoint.sh && \
     echo 'echo "SHELL=/bin/bash" > /etc/crontabs/root' >> /entrypoint.sh && \
