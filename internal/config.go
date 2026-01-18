@@ -349,9 +349,9 @@ func GetMonitors() (map[string]monitoring.Reporter, error) {
 	config := GetConfig()
 	monitors := map[string]monitoring.Reporter{}
 	for name, monitorConf := range config.Monitors {
-		reporter, err := monitoring.NewReporter(monitorConf)
+		reporter, err := monitoring.NewReporter(name, monitorConf)
 		if err != nil {
-			return nil, fmt.Errorf("could not create reporter for monitor \"%s\": %v", name, err)
+			return nil, fmt.Errorf("Monitor \"%s\": %v", name, err)
 		}
 		monitors[name] = reporter
 	}

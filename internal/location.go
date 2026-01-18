@@ -194,7 +194,7 @@ func (l Location) Backup(cron bool, dry bool, specificBackend string) []error {
 	reporters = rep
 
 	if err != nil {
-		colors.Error.Printf("Failed to get monitors: %v\n", err)
+		colors.Error.Println(err)
 	}
 
 	// Hooks before location validation
@@ -282,10 +282,11 @@ func (l Location) Backup(cron bool, dry bool, specificBackend string) []error {
 		// Report to monitors
 		if !dry {
 			for _, monitor := range l.Monitors {
-				colors.Body.Printf("Reporting to monitor \"%s\"...\n", monitor)
 				if _, ok := reporters[monitor]; ok {
 					if err := reporters[monitor].Report(&md, l.name, l.getLocationTags(), backend.name); err != nil {
 						colors.Error.Printf("Failed to report to monitor \"%s\": %v\n", monitor, err)
+					} else {
+						colors.Body.Printf("Reported to monitor \"%s\"\n", monitor)
 					}
 				}
 			}
