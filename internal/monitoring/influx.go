@@ -17,6 +17,7 @@ import (
 type InfluxReporter struct {
 	client   influxdb2.Client
 	writeAPI api.WriteAPIBlocking
+	server_tag string
 }
 
 func NewInfluxReporter(name string, monitor Monitor) (Reporter, error) {
@@ -27,6 +28,7 @@ func NewInfluxReporter(name string, monitor Monitor) (Reporter, error) {
 	token := env["INFLUX_TOKEN"]
 	org := env["INFLUX_ORG"]
 	bucket := env["INFLUX_BUCKET"]
+	serverTag := env["SERVER_TAG"]
 
 
 	// Return nil if configuration is incomplete
@@ -53,6 +55,7 @@ func NewInfluxReporter(name string, monitor Monitor) (Reporter, error) {
 	return &InfluxReporter{
 		client:   client,
 		writeAPI: writeAPI,
+		server_tag: serverTag,
 	}, nil
 }
 
@@ -72,6 +75,7 @@ func (ir *InfluxReporter) Report(md *metadata.BackupLogMetadata, locationName st
 		"exit_code":  md.ExitCode,
 		"snapshot_id": md.SnapshotID,
 		"tag": 	  tag,
+		"server": ir.server_tag,
 	}
 
 	// 2. Prepare Fields

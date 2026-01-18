@@ -20,6 +20,51 @@
   </p>
 </p>
 
+
+> **Fork Information:**
+> <br>
+> This is a modified fork of the original autorestic. It includes the following specific changes:
+> * **InfluxDB Metrics:** Added integration for sending backup metrics and updates to InfluxDB. Add:
+>```yml
+>monitors:
+>  stats:
+>    type: influx
+>    env:
+>      server_tag:
+>      influx_url:
+>      influx_token:
+>      influx_org:
+>      influx_bucket:
+>
+>locations:
+>  home:
+>    from: 
+>    <...>
+>    monitors:
+>      - stats
+>
+>```
+> * **Docker Cron Functionality:** Added Docker cron scheduling capabilities including Python helper scripts.
+>
+>```yml
+>services:
+>  autorestic:
+>    image: ghcr.io/lr101/autorestic:latest
+>    container_name: autorestic
+>    restart: unless-stopped
+>    privileged: true                # (Optional)      
+>    env_file: .env
+>    environment:
+>      - TZ=Europe/Berlin            # Change to your timezone
+>      - CRON_SCHEDULE=10 2 * * *    # Cron schedule for backups
+>    volumes:
+>      - ${DEVICE_FOLDER_PATH}:/data          # path to .autorestic.yml
+>      - ${LOCAL_BACKUP_PATH}:/backup
+>      - ./logs:/var/log/autorestic           # (Optional) Logs
+>      - ./rclone.conf:/root/.rclone.conf:ro  # (Optional) Rclone
+>      - ~/.ssh:/root/.ssh:ro                 # (Optional) SFTP
+>```
+
 <br>
 <br>
 
@@ -39,6 +84,8 @@ Autorestic is a wrapper around the amazing [restic](https://restic.net/). While 
 - Cron jobs for automatic backup
 - Backup & Restore docker volume
 - Generated completions for `[bash|zsh|fish|powershell]`
+- **InfluxDB Metric Reporting** (Fork specific)
+- **Docker Cron with Python Scripts** (Fork specific)
 
 ### ❓ Questions / Support
 
