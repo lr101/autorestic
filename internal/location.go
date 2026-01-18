@@ -13,6 +13,7 @@ import (
 	"github.com/cupcakearmy/autorestic/internal/flags"
 	"github.com/cupcakearmy/autorestic/internal/lock"
 	"github.com/cupcakearmy/autorestic/internal/metadata"
+	"github.com/cupcakearmy/autorestic/internal/monitoring"
 	"github.com/robfig/cron"
 )
 
@@ -48,6 +49,7 @@ type Location struct {
 	name         string               `mapstructure:",omitempty" yaml:",omitempty"`
 	From         []string             `mapstructure:"from,omitempty" yaml:"from,omitempty"`
 	Type         string               `mapstructure:"type,omitempty" yaml:"type,omitempty"`
+	Monitors     []string             `mapstructure:"monitors,omitempty" yaml:"monitors,omitempty"`
 	To           []string             `mapstructure:"to,omitempty" yaml:"to,omitempty"`
 	Hooks        Hooks                `mapstructure:"hooks,omitempty" yaml:"hooks,omitempty"`
 	Cron         string               `mapstructure:"cron,omitempty" yaml:"cron,omitempty"`
@@ -186,6 +188,15 @@ func (l Location) Backup(cron bool, dry bool, specificBackend string) []error {
 		},
 	}
 
+	reporters := map[string]monitoring.Reporter{}
+	
+	rep, err := GetMonitors()
+	reporters = rep
+
+	if err != nil {
+		colors.Error.Printf("Failed to get monitors: %v\n", err)
+	}
+
 	// Hooks before location validation
 	if err := l.ExecuteHooks(l.Hooks.PreValidate, options); err != nil {
 		errors = append(errors, err)
@@ -266,6 +277,18 @@ func (l Location) Backup(cron bool, dry bool, specificBackend string) []error {
 		for k, v := range mdEnv {
 			options.Envs[k+"_"+fmt.Sprint(i)] = v
 			options.Envs[k+"_"+strings.ToUpper(backend.name)] = v
+		}
+
+		// Report to monitors
+		if !dry {
+			for _, monitor := range l.Monitors {
+				colors.Body.Printf("Reporting to monitor \"%s\"...\n", monitor)
+				if _, ok := reporters[monitor]; ok {
+					if err := reporters[monitor].Report(&md, l.name, l.getLocationTags(), backend.name); err != nil {
+						colors.Error.Printf("Failed to report to monitor \"%s\": %v\n", monitor, err)
+					}
+				}
+			}
 		}
 
 		// If error save it and continue
