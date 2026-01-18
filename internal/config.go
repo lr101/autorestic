@@ -11,10 +11,12 @@ import (
 	"github.com/cupcakearmy/autorestic/internal/colors"
 	"github.com/cupcakearmy/autorestic/internal/flags"
 	"github.com/cupcakearmy/autorestic/internal/lock"
+	"github.com/cupcakearmy/autorestic/internal/monitoring"
 	"github.com/joho/godotenv"
 	"github.com/mitchellh/go-homedir"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
+	
 )
 
 const VERSION = "1.8.3"
@@ -28,6 +30,7 @@ type Config struct {
 	Locations map[string]Location `mapstructure:"locations" yaml:"locations"`
 	Backends  map[string]Backend  `mapstructure:"backends" yaml:"backends"`
 	Global    Options             `mapstructure:"global" yaml:"global"`
+	Monitors   map[string]monitoring.Monitor   `mapstructure:"monitors" yaml:"monitors"`
 }
 
 var once sync.Once
@@ -340,4 +343,17 @@ func combineAllOptions(key string, l Location, b Backend) []string {
 	options = append(options, bFlags...)
 	options = append(options, lFlags...)
 	return options
+}
+
+func GetMonitors() (map[string]monitoring.Reporter, error) {
+	config := GetConfig()
+	monitors := map[string]monitoring.Reporter{}
+	for name, monitorConf := range config.Monitors {
+		reporter, err := monitoring.NewReporter(monitorConf)
+		if err != nil {
+			return nil, fmt.Errorf("could not create reporter for monitor \"%s\": %v", name, err)
+		}
+		monitors[name] = reporter
+	}
+	return monitors, nil
 }
