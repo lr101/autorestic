@@ -2,10 +2,11 @@ package monitoring
 
 import (
 	"context"
-	"time"
-	"strings"
+	"fmt"
 	"regexp"
 	"strconv"
+	"strings"
+	"time"
 
 	"github.com/cupcakearmy/autorestic/internal/metadata"
 	influxdb2 "github.com/influxdata/influxdb-client-go/v2"
@@ -18,25 +19,41 @@ type InfluxReporter struct {
 	writeAPI api.WriteAPIBlocking
 }
 
-// NewInfluxReporter initializes the client. Returns nil if config is missing.
-func NewInfluxReporter(monitor Monitor) Reporter {
+func NewInfluxReporter(name string, monitor Monitor) (Reporter, error) {
+	// Generate the merged environment map
+	env := getEnv(name, monitor)
 
-	serverURL := monitor.Env["influx_url"]
-	token := monitor.Env["influx_token"]
-	org := monitor.Env["influx_org"]
-	bucket := monitor.Env["influx_bucket"]
-	// Return nil if configuration is incomplete so the app knows not to use this reporter
+	serverURL := env["INFLUX_URL"]
+	token := env["INFLUX_TOKEN"]
+	org := env["INFLUX_ORG"]
+	bucket := env["INFLUX_BUCKET"]
+
+
+	// Return nil if configuration is incomplete
 	if serverURL == "" || token == "" || org == "" || bucket == "" {
-		return nil
+		return nil, fmt.Errorf("influx configuration is missing required fields (URL, Token, Org, or Bucket)")
 	}
 
 	client := influxdb2.NewClient(serverURL, token)
+
+	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
+    defer cancel()
+	if _, err := client.Health(ctx); err != nil {
+        client.Close() // Clean up
+        return nil, fmt.Errorf("InfluxDB connection failed: %v", err)
+    }
+    bucketAPI := client.BucketsAPI()
+    if _, err := bucketAPI.FindBucketByName(ctx, bucket); err != nil {
+        client.Close()
+        return nil, fmt.Errorf("InfluxDB bucket '%s' validation failed: %v", bucket, err)
+    }
+
 	writeAPI := client.WriteAPIBlocking(org, bucket)
 
 	return &InfluxReporter{
 		client:   client,
 		writeAPI: writeAPI,
-	}
+	}, nil
 }
 
 // Close ensures the client connection is closed gracefully
